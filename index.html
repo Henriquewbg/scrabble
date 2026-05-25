@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1a0e00" />
+  <meta name="description" content="Scrabble Score — Some pontos automaticamente no Scrabble" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Scrabble Score</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0800;
+      --bg2: #1a1000;
+      --wood: #8B5E3C;
+      --wood-light: #C4883C;
+      --wood-dark: #5c3a1e;
+      --cream: #F5E6C8;
+      --cream-dim: #c4b08a;
+      --gold: #D4AF37;
+      --gold-light: #F4CF57;
+      --red: #B22222;
+      --blue-tile: #1a4a7a;
+      --pink-tile: #7a2a5a;
+      --cyan-tile: #1a6a7a;
+      --accent: #E8C86A;
+      --letter-bg: #F0DFB0;
+      --letter-shadow: #8B6914;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Crimson Pro', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(139,94,60,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(212,175,55,0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Grain overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 1rem 6rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* HEADER */
+    header {
+      text-align: center;
+      padding: 2.5rem 0 1.5rem;
+      position: relative;
+    }
+
+    .logo-tiles {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 0.6rem;
+    }
+
+    .logo-tile {
+      width: 40px;
+      height: 40px;
+      background: var(--letter-bg);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: 1.4rem;
+      color: #2a1a00;
+      box-shadow: 0 3px 0 var(--letter-shadow), 0 4px 8px rgba(0,0,0,0.5);
+      position: relative;
+      animation: tileAppear 0.4s ease both;
+    }
+
+    .logo-tile span.pts {
+      font-size: 0.45rem;
+      font-family: 'Crimson Pro', serif;
+      position: absolute;
+      bottom: 3px;
+      right: 4px;
+      color: #5a3a00;
+      font-weight: 600;
+    }
+
+    @keyframes tileAppear {
+      from { transform: translateY(-20px) rotateX(40deg); opacity: 0; }
+      to { transform: translateY(0) rotateX(0); opacity: 1; }
+    }
+
+    .logo-tile:nth-child(1) { animation-delay: 0.05s; }
+    .logo-tile:nth-child(2) { animation-delay: 0.1s; }
+    .logo-tile:nth-child(3) { animation-delay: 0.15s; }
+    .logo-tile:nth-child(4) { animation-delay: 0.2s; }
+    .logo-tile:nth-child(5) { animation-delay: 0.25s; }
+    .logo-tile:nth-child(6) { animation-delay: 0.3s; }
+    .logo-tile:nth-child(7) { animation-delay: 0.35s; }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      color: var(--cream-dim);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* SECTION CARD */
+    .card {
+      background: linear-gradient(135deg, rgba(26,16,0,0.95), rgba(20,12,0,0.98));
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.6;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+      opacity: 0.9;
+    }
+
+    /* WORD INPUT */
+    .word-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .tiles-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 52px;
+      padding: 0.5rem;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      border: 1px solid rgba(212,175,55,0.1);
+      align-items: center;
+    }
+
+    .tile {
+      width: 44px;
+      height: 44px;
+      background: var(--letter-bg);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: 1.3rem;
+      color: #2a1a00;
+      box-shadow: 0 3px 0 var(--letter-shadow), 0 4px 10px rgba(0,0,0,0.5);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: tileIn 0.2s ease both;
+    }
+
+    @keyframes tileIn {
+      from { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+      to { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    .tile:hover { transform: translateY(-2px); box-shadow: 0 5px 0 var(--letter-shadow), 0 6px 14px rgba(0,0,0,0.6); }
+    .tile:active { transform: translateY(1px); box-shadow: 0 2px 0 var(--letter-shadow); }
+
+    .tile .pts {
+      font-size: 0.42rem;
+      font-family: 'Crimson Pro', serif;
+      position: absolute;
+      bottom: 3px;
+      right: 4px;
+      color: #5a3a00;
+      font-weight: 600;
+    }
+
+    .tile.bonus-dw { background: #f0c8c8; }
+    .tile.bonus-tw { background: #f0a0a0; }
+    .tile.bonus-dl { background: #c8d8f0; }
+    .tile.bonus-tl { background: #9ab4e0; }
+    .tile.blank {
+      background: #e0e0d0;
+      color: #888;
+      font-size: 0.8rem;
+    }
+
+    .empty-hint {
+      color: rgba(212,175,55,0.3);
+      font-style: italic;
+      font-size: 0.9rem;
+      padding: 0.3rem 0.5rem;
+    }
+
+    /* INPUT ROW */
+    .input-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 8px;
+      color: var(--cream);
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      padding: 0.6rem 1rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: var(--gold); }
+    input[type="text"]::placeholder { color: rgba(196,176,138,0.3); font-size: 1rem; letter-spacing: 0.05em; }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--wood-light));
+      color: #1a0e00;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+    }
+
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(1px); filter: brightness(0.95); }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(212,175,55,0.3);
+      color: var(--cream-dim);
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* BONUS SELECTOR */
+    .bonus-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .bonus-chip {
+      padding: 0.35rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-family: 'Crimson Pro', serif;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+      letter-spacing: 0.03em;
+    }
+
+    .bonus-chip.dl { background: rgba(100,150,220,0.15); border-color: rgba(100,150,220,0.4); color: #9ab4e0; }
+    .bonus-chip.tl { background: rgba(50,100,200,0.15); border-color: rgba(50,100,200,0.4); color: #7090d0; }
+    .bonus-chip.dw { background: rgba(220,120,120,0.15); border-color: rgba(220,120,120,0.4); color: #e09090; }
+    .bonus-chip.tw { background: rgba(180,30,30,0.15); border-color: rgba(200,60,60,0.4); color: #e07070; }
+    .bonus-chip.active { filter: brightness(1.3); transform: scale(1.05); border-width: 2px; }
+    .bonus-chip:hover { filter: brightness(1.2); }
+
+    .bonus-hint {
+      font-size: 0.78rem;
+      color: var(--cream-dim);
+      opacity: 0.6;
+      font-style: italic;
+    }
+
+    /* SCORE DISPLAY */
+    .score-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .score-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: var(--gold-light);
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(212,175,55,0.3);
+      transition: all 0.3s;
+    }
+
+    .score-breakdown {
+      font-size: 0.85rem;
+      color: var(--cream-dim);
+      opacity: 0.7;
+      font-style: italic;
+    }
+
+    .score-pulse {
+      animation: scorePulse 0.4s ease;
+    }
+
+    @keyframes scorePulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); color: var(--gold-light); }
+      100% { transform: scale(1); }
+    }
+
+    /* PLAYERS */
+    .players-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
+    .player-card {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(212,175,55,0.15);
+      border-radius: 10px;
+      padding: 1rem;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+
+    .player-card.active-player {
+      border-color: rgba(212,175,55,0.5);
+      background: rgba(212,175,55,0.05);
+    }
+
+    .player-card.active-player::after {
+      content: '▶';
+      position: absolute;
+      top: 0.6rem;
+      right: 0.7rem;
+      font-size: 0.6rem;
+      color: var(--gold);
+    }
+
+    .player-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.9rem;
+      color: var(--cream);
+      margin-bottom: 0.4rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-name input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(212,175,55,0.2);
+      color: var(--cream);
+      font-family: 'Playfair Display', serif;
+      font-size: 0.9rem;
+      width: 100%;
+      outline: none;
+      padding-bottom: 2px;
+    }
+
+    .player-name input:focus { border-bottom-color: var(--gold); }
+
+    .player-score {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .player-history {
+      font-size: 0.72rem;
+      color: var(--cream-dim);
+      opacity: 0.5;
+      margin-top: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .add-score-btn {
+      margin-top: 0.6rem;
+      width: 100%;
+      background: rgba(212,175,55,0.1);
+      border: 1px solid rgba(212,175,55,0.25);
+      color: var(--gold);
+      border-radius: 6px;
+      padding: 0.4rem;
+      font-family: 'Crimson Pro', serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .add-score-btn:hover { background: rgba(212,175,55,0.2); }
+
+    /* HISTORY */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.2); border-radius: 2px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.5rem 0.7rem;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      border: 1px solid rgba(212,175,55,0.08);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+    .history-word {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      color: var(--cream);
+      flex: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .history-player {
+      font-size: 0.72rem;
+      color: var(--cream-dim);
+      opacity: 0.6;
+    }
+
+    .history-score {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gold);
+      min-width: 2rem;
+      text-align: right;
+    }
+
+    .history-del {
+      background: none;
+      border: none;
+      color: rgba(178,34,34,0.5);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 0 0.2rem;
+      transition: color 0.15s;
+    }
+
+    .history-del:hover { color: #e05050; }
+
+    /* LETTER VALUES REFERENCE */
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+      gap: 6px;
+    }
+
+    .ref-tile {
+      background: rgba(240,223,176,0.08);
+      border: 1px solid rgba(212,175,55,0.12);
+      border-radius: 6px;
+      padding: 0.4rem 0.3rem;
+      text-align: center;
+    }
+
+    .ref-letter {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--cream);
+      display: block;
+    }
+
+    .ref-pts {
+      font-size: 0.65rem;
+      color: var(--gold);
+      opacity: 0.7;
+    }
+
+    /* ADD PLAYER */
+    .add-player-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    .add-player-row input {
+      flex: 1;
+      font-size: 1rem;
+      padding: 0.5rem 0.8rem;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(26,16,0,0.96);
+      border: 1px solid rgba(212,175,55,0.4);
+      color: var(--cream);
+      padding: 0.7rem 1.4rem;
+      border-radius: 30px;
+      font-family: 'Crimson Pro', serif;
+      font-size: 0.95rem;
+      z-index: 999;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* DIVIDER */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent);
+      margin: 1rem 0;
+    }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(10,6,0,0.97);
+      border-top: 1px solid rgba(212,175,55,0.15);
+      display: flex;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 0.9rem 0;
+      background: none;
+      border: none;
+      color: rgba(196,176,138,0.5);
+      font-family: 'Crimson Pro', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .nav-btn .icon { font-size: 1.3rem; display: block; }
+    .nav-btn.active { color: var(--gold); }
+
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Bonus legend */
+    .legend {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      font-size: 0.72rem;
+    }
+
+    .legend span {
+      padding: 0.2rem 0.5rem;
+      border-radius: 10px;
+    }
+
+    .leg-dl { background: rgba(100,150,220,0.15); color: #9ab4e0; }
+    .leg-tl { background: rgba(50,100,200,0.15); color: #7090d0; }
+    .leg-dw { background: rgba(220,120,120,0.15); color: #e09090; }
+    .leg-tw { background: rgba(200,60,60,0.15); color: #e07070; }
+
+    /* Reset btn */
+    .btn-danger {
+      background: rgba(178,34,34,0.15);
+      border: 1px solid rgba(178,34,34,0.4);
+      color: #e08080;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      font-family: 'Crimson Pro', serif;
+      cursor: pointer;
+    }
+
+    .btn-danger:hover { background: rgba(178,34,34,0.25); }
+
+    /* Section header row */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .section-head .card-title { margin-bottom: 0; }
+
+    /* Bingo badge */
+    .bingo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--gold), var(--wood-light));
+      color: #1a0e00;
+      font-family: 'Playfair Display', serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 10px;
+      letter-spacing: 0.08em;
+      animation: badgePop 0.4s ease;
+    }
+
+    @keyframes badgePop {
+      0% { transform: scale(0); }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    @media (max-width: 380px) {
+      .players-grid { grid-template-columns: 1fr 1fr; }
+      .score-number { font-size: 2.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-tiles">
+      <div class="logo-tile">S<span class="pts">1</span></div>
+      <div class="logo-tile">C<span class="pts">3</span></div>
+      <div class="logo-tile">R<span class="pts">1</span></div>
+      <div class="logo-tile">A<span class="pts">1</span></div>
+      <div class="logo-tile">B<span class="pts">3</span></div>
+      <div class="logo-tile">L<span class="pts">1</span></div>
+      <div class="logo-tile">E<span class="pts">1</span></div>
+    </div>
+    <h1>Score Keeper</h1>
+  </header>
+
+  <!-- PAGE: CALCULADORA -->
+  <div class="page active" id="page-calc">
+
+    <!-- Palavra -->
+    <div class="card">
+      <div class="card-title">✦ Digite a Palavra</div>
+      <div class="word-input-wrap">
+        <div class="tiles-preview" id="tilesPreview">
+          <span class="empty-hint">Suas letras aparecerão aqui...</span>
+        </div>
+        <div class="input-row">
+          <input type="text" id="wordInput" placeholder="ex: PEIXE" maxlength="15" autocomplete="off" autocorrect="off" spellcheck="false" />
+          <button class="btn btn-ghost" onclick="clearWord()">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bônus de casa -->
+    <div class="card">
+      <div class="card-title">✦ Bônus de Casa</div>
+      <p class="bonus-hint" style="margin-bottom:0.7rem">Toque para selecionar o bônus da casa onde caiu a última letra:</p>
+      <div class="bonus-row" id="bonusRow">
+        <span class="bonus-chip dl" data-bonus="dl" onclick="toggleBonus(this)">2L × 2</span>
+        <span class="bonus-chip tl" data-bonus="tl" onclick="toggleBonus(this)">3L × 3</span>
+        <span class="bonus-chip dw" data-bonus="dw" onclick="toggleBonus(this)">2P × 2</span>
+        <span class="bonus-chip tw" data-bonus="tw" onclick="toggleBonus(this)">3P × 3</span>
+      </div>
+      <div class="divider"></div>
+      <div class="legend">
+        <span class="leg-dl">2L = dobra 1 letra</span>
+        <span class="leg-tl">3L = triplica 1 letra</span>
+        <span class="leg-dw">2P = dobra palavra</span>
+        <span class="leg-tw">3P = triplica palavra</span>
+      </div>
+    </div>
+
+    <!-- Pontuação calculada -->
+    <div class="card">
+      <div class="card-title">✦ Pontuação</div>
+      <div class="score-display">
+        <div>
+          <div class="score-number" id="scoreDisplay">0</div>
+          <div class="score-breakdown" id="scoreBreakdown">Digite uma palavra acima</div>
+        </div>
+        <div id="bingoBadgeWrap"></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center">
+        <select id="playerSelect" style="background:rgba(0,0,0,0.5);border:1px solid rgba(212,175,55,0.3);color:var(--cream);border-radius:8px;padding:0.5rem 0.8rem;font-family:'Crimson Pro',serif;font-size:0.9rem;outline:none;flex:1">
+        </select>
+        <button class="btn btn-primary" onclick="confirmScore()">Confirmar ✓</button>
+      </div>
+    </div>
+
+  </div><!-- end page-calc -->
+
+  <!-- PAGE: JOGADORES -->
+  <div class="page" id="page-players">
+    <div class="card">
+      <div class="section-head">
+        <span class="card-title" style="margin:0">✦ Placar</span>
+        <button class="btn-danger" onclick="resetGame()">Zerar Jogo</button>
+      </div>
+      <div class="players-grid" id="playersGrid"></div>
+      <div class="add-player-row">
+        <input type="text" id="newPlayerName" placeholder="Nome do jogador..." maxlength="12" />
+        <button class="btn btn-primary" onclick="addPlayer()">+ Adicionar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <span class="card-title" style="margin:0">✦ Histórico</span>
+        <button class="btn btn-ghost" onclick="clearHistory()" style="font-size:0.7rem;padding:0.3rem 0.6rem">Limpar</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <p style="color:rgba(196,176,138,0.3);font-style:italic;font-size:0.85rem;text-align:center;padding:1rem 0">Nenhuma jogada ainda</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: REFERÊNCIA -->
+  <div class="page" id="page-ref">
+    <div class="card">
+      <div class="card-title">✦ Valor das Letras (PT-BR)</div>
+      <div class="ref-grid" id="refGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">✦ Regras de Pontuação</div>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.88rem;color:var(--cream-dim);line-height:1.6">
+        <p>🔤 Some o valor de cada letra da palavra.</p>
+        <p>🟦 <strong style="color:#9ab4e0">DL</strong> — dobra o valor de uma letra.</p>
+        <p>🟦 <strong style="color:#7090d0">TL</strong> — triplica o valor de uma letra.</p>
+        <p>🟥 <strong style="color:#e09090">DW</strong> — dobra o total da palavra.</p>
+        <p>🟥 <strong style="color:#e07070">TW</strong> — triplica o total da palavra.</p>
+        <p>🎯 <strong style="color:var(--gold)">Bingo!</strong> — Usar as 7 letras dá +40 pontos bônus.</p>
+        <p>🔡 A letra <strong>branca (curinga)</strong> vale 0 pontos, mas pode ser qualquer letra.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- container -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-calc" onclick="switchPage('calc')">
+    <span class="icon">🎯</span>Calcular
+  </button>
+  <button class="nav-btn" id="nav-players" onclick="switchPage('players')">
+    <span class="icon">👑</span>Jogadores
+  </button>
+  <button class="nav-btn" id="nav-ref" onclick="switchPage('ref')">
+    <span class="icon">📖</span>Referência
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// === DADOS ===
+const LETTER_VALUES_PT = {
+  A:1, B:3, C:2, D:2, E:1, F:4, G:4, H:4, I:1, J:5,
+  L:2, M:1, N:3, O:1, P:2, Q:6, R:1, S:1, T:1, U:1,
+  V:4, X:8, Z:8, K:5, W:10, Y:8,
+  '?':0  // curinga
+};
+
+let state = {
+  players: [
+    { name: 'Jogador 1', score: 0, history: [] },
+    { name: 'Jogador 2', score: 0, history: [] }
+  ],
+  activePlayer: 0,
+  gameHistory: [],
+  currentBonus: null
+};
+
+// Carregar estado salvo
+try {
+  const saved = localStorage.getItem('scrabble_state');
+  if (saved) state = JSON.parse(saved);
+} catch(e) {}
+
+function saveState() {
+  try { localStorage.setItem('scrabble_state', JSON.stringify(state)); } catch(e) {}
+}
+
+// === CÁLCULO ===
+function calcScore(word, bonus) {
+  if (!word) return { total: 0, base: 0, bingo: false };
+  const letters = word.toUpperCase().split('');
+  let base = 0;
+  let highestLetterVal = 0;
+  let highestIdx = 0;
+
+  letters.forEach((l, i) => {
+    const v = LETTER_VALUES_PT[l] ?? 0;
+    if (v > highestLetterVal) { highestLetterVal = v; highestIdx = i; }
+    base += v;
+  });
+
+  let total = base;
+  let bonusDesc = '';
+
+  if (bonus === 'dl') {
+    // Dobra a letra de maior valor (simplificação UX)
+    total = base + highestLetterVal;
+    bonusDesc = `+${highestLetterVal} (DL)`;
+  } else if (bonus === 'tl') {
+    total = base + highestLetterVal * 2;
+    bonusDesc = `+${highestLetterVal*2} (TL)`;
+  } else if (bonus === 'dw') {
+    total = base * 2;
+    bonusDesc = `×2 (DW)`;
+  } else if (bonus === 'tw') {
+    total = base * 3;
+    bonusDesc = `×3 (TW)`;
+  }
+
+  const bingo = letters.length >= 7;
+  if (bingo) total += 40;
+
+  return { total, base, bingo, bonusDesc };
+}
+
+// === RENDER TILES ===
+function renderTiles() {
+  const word = document.getElementById('wordInput').value.toUpperCase();
+  const preview = document.getElementById('tilesPreview');
+  const bonus = state.currentBonus;
+
+  if (!word) {
+    preview.innerHTML = '<span class="empty-hint">Suas letras aparecerão aqui...</span>';
+    updateScore('', bonus);
+    return;
+  }
+
+  preview.innerHTML = '';
+  word.split('').forEach((l, i) => {
+    const v = LETTER_VALUES_PT[l] ?? 0;
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    if (l === '?') tile.classList.add('blank');
+    tile.innerHTML = `${l === '?' ? '☆' : l}<span class="pts">${v}</span>`;
+    tile.onclick = () => removeLetter(i);
+    preview.appendChild(tile);
+  });
+
+  updateScore(word, bonus);
+}
+
+function updateScore(word, bonus) {
+  const { total, base, bingo, bonusDesc } = calcScore(word, bonus);
+  const scoreEl = document.getElementById('scoreDisplay');
+  scoreEl.textContent = total;
+  scoreEl.classList.remove('score-pulse');
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add('score-pulse');
+
+  let breakdown = '';
+  if (word) {
+    breakdown = `Base: ${base}pts`;
+    if (bonusDesc) breakdown += ` · ${bonusDesc}`;
+    if (bingo) breakdown += ` · Bingo! +50`;
+  } else {
+    breakdown = 'Digite uma palavra acima';
+  }
+  document.getElementById('scoreBreakdown').textContent = breakdown;
+
+  const badgeWrap = document.getElementById('bingoBadgeWrap');
+  badgeWrap.innerHTML = bingo && word ? '<span class="bingo-badge">🎯 BINGO!</span>' : '';
+}
+
+function removeLetter(idx) {
+  const input = document.getElementById('wordInput');
+  const word = input.value;
+  input.value = word.slice(0, idx) + word.slice(idx + 1);
+  renderTiles();
+}
+
+function clearWord() {
+  document.getElementById('wordInput').value = '';
+  state.currentBonus = null;
+  document.querySelectorAll('.bonus-chip').forEach(c => c.classList.remove('active'));
+  renderTiles();
+}
+
+function toggleBonus(el) {
+  const bonus = el.dataset.bonus;
+  if (state.currentBonus === bonus) {
+    state.currentBonus = null;
+    el.classList.remove('active');
+  } else {
+    state.currentBonus = bonus;
+    document.querySelectorAll('.bonus-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+  renderTiles();
+}
+
+// === CONFIRMAR ===
+function confirmScore() {
+  const word = document.getElementById('wordInput').value.toUpperCase();
+  if (!word) { showToast('Digite uma palavra primeiro!'); return; }
+
+  const { total, base, bingo } = calcScore(word, state.currentBonus);
+  const playerIdx = parseInt(document.getElementById('playerSelect').value);
+
+  state.players[playerIdx].score += total;
+  state.players[playerIdx].history.push(total);
+
+  state.gameHistory.unshift({
+    word,
+    score: total,
+    playerName: state.players[playerIdx].name,
+    playerIdx,
+    bonus: state.currentBonus,
+    bingo
+  });
+
+  saveState();
+  renderPlayers();
+  renderHistory();
+  clearWord();
+  showToast(`${word} → ${total} pts para ${state.players[playerIdx].name}!`);
+  switchPage('players');
+}
+
+// === JOGADORES ===
+function renderPlayers() {
+  const grid = document.getElementById('playersGrid');
+  const sel = document.getElementById('playerSelect');
+  if (!grid) return;
+  grid.innerHTML = '';
+  sel.innerHTML = '';
+
+  state.players.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'player-card' + (i === state.activePlayer ? ' active-player' : '');
+    const histStr = p.history.slice(-5).reverse().join(', ') || '—';
+
+    card.innerHTML = `
+      <div class="player-name"><input value="${p.name}" onchange="renamePlayer(${i}, this.value)" placeholder="Jogador ${i+1}" /></div>
+      <div class="player-score" id="pscore-${i}">${p.score}</div>
+      <div class="player-history">Últimas: ${histStr}</div>
+      <button class="add-score-btn" onclick="setActivePlayer(${i})">📝 Jogar vez</button>
+    `;
+    grid.appendChild(card);
+
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    if (i === state.activePlayer) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renamePlayer(idx, name) {
+  state.players[idx].name = name;
+  saveState();
+  renderHistory();
+  renderPlayerSelect();
+}
+
+function renderPlayerSelect() {
+  const sel = document.getElementById('playerSelect');
+  sel.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    if (i === state.activePlayer) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function setActivePlayer(idx) {
+  state.activePlayer = idx;
+  document.getElementById('playerSelect').value = idx;
+  saveState();
+  renderPlayers();
+  switchPage('calc');
+}
+
+function addPlayer() {
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim() || `Jogador ${state.players.length + 1}`;
+  if (state.players.length >= 6) { showToast('Máximo 6 jogadores!'); return; }
+  state.players.push({ name, score: 0, history: [] });
+  input.value = '';
+  saveState();
+  renderPlayers();
+  showToast(`${name} adicionado!`);
+}
+
+function resetGame() {
+  if (!confirm('Zerar todos os pontos?')) return;
+  state.players.forEach(p => { p.score = 0; p.history = []; });
+  state.gameHistory = [];
+  saveState();
+  renderPlayers();
+  renderHistory();
+  showToast('Jogo zerado!');
+}
+
+// === HISTÓRICO ===
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!list) return;
+  if (!state.gameHistory.length) {
+    list.innerHTML = '<p style="color:rgba(196,176,138,0.3);font-style:italic;font-size:0.85rem;text-align:center;padding:1rem 0">Nenhuma jogada ainda</p>';
+    return;
+  }
+  list.innerHTML = '';
+  state.gameHistory.slice(0, 30).forEach((h, i) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <span class="history-word">${h.word}${h.bingo ? ' 🎯' : ''}</span>
+      <span class="history-player">${h.playerName}</span>
+      <span class="history-score">+${h.score}</span>
+      <button class="history-del" onclick="undoEntry(${i})" title="Remover">✕</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function undoEntry(idx) {
+  const entry = state.gameHistory[idx];
+  state.players[entry.playerIdx].score -= entry.score;
+  state.players[entry.playerIdx].score = Math.max(0, state.players[entry.playerIdx].score);
+  state.players[entry.playerIdx].history.pop();
+  state.gameHistory.splice(idx, 1);
+  saveState();
+  renderPlayers();
+  renderHistory();
+  showToast('Jogada removida');
+}
+
+function clearHistory() {
+  if (!confirm('Limpar histórico?')) return;
+  state.gameHistory = [];
+  saveState();
+  renderHistory();
+}
+
+// === REFERÊNCIA ===
+function renderRef() {
+  const grid = document.getElementById('refGrid');
+  if (!grid) return;
+  Object.entries(LETTER_VALUES_PT).forEach(([l, v]) => {
+    if (l === '?') return;
+    const tile = document.createElement('div');
+    tile.className = 'ref-tile';
+    tile.innerHTML = `<span class="ref-letter">${l}</span><span class="ref-pts">${v} pt${v>1?'s':''}</span>`;
+    grid.appendChild(tile);
+  });
+}
+
+// === NAVIGATION ===
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById(`nav-${page}`).classList.add('active');
+  if (page === 'players') { renderPlayers(); renderHistory(); }
+}
+
+// === TOAST ===
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// === INIT ===
+document.getElementById('wordInput').addEventListener('input', renderTiles);
+document.getElementById('wordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmScore();
+});
+
+renderPlayers();
+renderRef();
+
+// PWA install hint
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  window._pwaPrompt = e;
+});
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+
+</body>
+</html>
