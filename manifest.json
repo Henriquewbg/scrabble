@@ -1,0 +1,24 @@
+{
+  "name": "Scrabble Score Keeper",
+  "short_name": "Scrabble",
+  "description": "Some pontos do Scrabble automaticamente",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0800",
+  "theme_color": "#1a0e00",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%231a0e00'/%3E%3Crect x='24' y='56' width='64' height='64' rx='8' fill='%23F0DFB0'/%3E%3Crect x='104' y='72' width='64' height='64' rx='8' fill='%23F0DFB0'/%3E%3Ctext x='56' y='105' font-size='40' font-family='serif' font-weight='bold' fill='%232a1a00' text-anchor='middle'%3ES%3C/text%3E%3Ctext x='136' y='121' font-size='40' font-family='serif' font-weight='bold' fill='%232a1a00' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231a0e00'/%3E%3Crect x='60' y='150' width='170' height='170' rx='20' fill='%23F0DFB0'/%3E%3Crect x='282' y='192' width='170' height='170' rx='20' fill='%23F0DFB0'/%3E%3Ctext x='145' y='270' font-size='100' font-family='serif' font-weight='bold' fill='%232a1a00' text-anchor='middle'%3ES%3C/text%3E%3Ctext x='367' y='322' font-size='100' font-family='serif' font-weight='bold' fill='%232a1a00' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["games", "utilities"],
+  "lang": "pt-BR"
+}
